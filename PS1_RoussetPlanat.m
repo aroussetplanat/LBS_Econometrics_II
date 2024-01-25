@@ -187,6 +187,7 @@ phi = 0.9;
 unconditional_std = 3;
 eps_sigma2 = (unconditional_std^2) * (1 - phi^2);
 
+
 start_year = 1948;
 end_year = 2017.75;
 quarters = (start_year:0.25:end_year)';
@@ -240,8 +241,13 @@ for i = start_forecast:length(quarters)
     forecast_horizon = 12;
     forecasts = zeros(forecast_horizon, 1);
     for h = 1:forecast_horizon
-        forecasts(h) = beta_hat(1) + beta_hat(2)^(h) * (y(end) - beta_hat(1)) ;
+        if h==1
+            forecasts(h) = beta_hat(1) + beta_hat(2) * y(end);
+        else
+            forecasts(h) = beta_hat(1) + beta_hat(2) * forecasts(h-1);
+        end    
     end
+
 
      forecast_matrix_1(:, i-start_forecast+1) = forecasts;
 end
@@ -260,7 +266,11 @@ for i = start_forecast:length(quarters)
     forecast_horizon = 12;
     forecasts = zeros(forecast_horizon, 1);
     for h = 1:forecast_horizon
-        forecasts(h) = beta_hat(1) + beta_hat(2)^(h) * (y(end) - beta_hat(1));
+        if h==1
+            forecasts(h) = beta_hat(1) + beta_hat(2) *y(end) ;
+        else
+            forecasts(h) = beta_hat(1) + beta_hat(2) * forecasts(h-1);
+        end    
     end
 
     forecast_matrix_2(:, i-start_forecast+1) = forecasts;
@@ -283,10 +293,15 @@ for i = start_forecast:length(quarters)
     yt_window = ytrue(1:i-1);
     forecasts = zeros(12, 1);
     for h = 1:12
-        forecasts(h) = mu(i) + phi^(h) * (yt_window(end) - mu(i));
+        if h==1
+            forecasts(h) = mu(i) + phi * yt_window(end);
+        else
+            forecasts(h) = mu(i) + phi * forecasts(h-1);
+        end
     end
     forecast_matrix_4(:, i-start_forecast+1) = forecasts;
 end
+
 
 
 %% Q7
@@ -340,168 +355,3 @@ ylabel('MAE Ratio');
 xlabel('Forecasting Horizon');
 
 saveas(gcf, '/Users/adrienroussetplanat/Library/CloudStorage/Dropbox/PhD/Courses/S2/Metrics_II/PS/Output/Plot/ps1_fig5', 'epsc');
-
-%% Annex - Simulate 10,000 processes and compute the mean RMSE/MAE across the 4 forecast strategies.
-
-num_iterations = 10000;
-rng(8); 
-all_rmse = zeros(12, 4, num_iterations);
-all_mae = zeros(12, 4, num_iterations);
-
-for iter = 1:num_iterations
-
-    phi = 0.9;
-     
-    unconditional_std = 3;
-    
-    eps_sigma2 = (unconditional_std^2) * (1 - phi^2);
-    
-    
-    start_year = 1948;
-    end_year = 2017.75;
-    quarters = (start_year:0.25:end_year)';
-    
-    mu = zeros(size(quarters));
-    mu(quarters >= 1948 & quarters <= 1972) = 5 * (1 - phi);
-    mu(quarters > 1972 & quarters <= 1995) = 0 * (1 - phi);
-    mu(quarters > 1995 & quarters <= 2004) = 4.5 * (1 - phi);
-    mu(quarters > 2004) = 0.5 * (1 - phi);
-    
-    y = zeros(size(quarters));
-    epsilon = sqrt(eps_sigma2) * randn(size(quarters));
-    y(1) = mu(1) + epsilon(1);
-    
-    for t = 2:length(quarters)
-        y(t) = mu(t) + phi * y(t - 1) + epsilon(t);
-    end
-    
-    % Q2
-    
-    mean_y_1948_1972 = mean(y(quarters >= 1948 & quarters <= 1972));
-    mean_y_1972_1995 = mean(y(quarters > 1972 & quarters <= 1995));
-    mean_y_1995_2004 = mean(y(quarters > 1995 & quarters <= 2004));
-    mean_y_2004_2017 = mean(y(quarters > 2004));
-        
-    ytrue = y;
-    
-    % Q3
-    start_forecast = find(quarters == 1990.00);
-    
-    forecast_matrix_1 = zeros(12, length(quarters) - start_forecast+1);
-    
-    for i = start_forecast:length(quarters)
-        y_window = ytrue(1:i-2);
-    
-        X = [ones(length(y_window), 1), y_window];
-        y = ytrue(2:i-1); 
-        beta_hat = X\y;
-    
-        forecast_horizon = 12;
-        forecasts = zeros(forecast_horizon, 1);
-        for h = 1:forecast_horizon
-            forecasts(h) = beta_hat(1) + beta_hat(2)^(h) * (y(end) - beta_hat(1)) ;
-        end
-    
-         forecast_matrix_1(:, i-start_forecast+1) = forecasts;
-    end
-    
-    % Q4
-    
-    forecast_matrix_2 = zeros(12, length(quarters) - start_forecast+1);    
-    rolling_window_size = 60;
-    
-    for i = start_forecast:length(quarters)
-
-        yt_window = ytrue(i - rolling_window_size - 2:i-2);
-    
-        
-        X = [ones(length(yt_window), 1), yt_window];
-        y = ytrue(i - rolling_window_size-1:i-1); 
-        beta_hat = X\y;
-    
-        
-        forecast_horizon = 12;
-        forecasts = zeros(forecast_horizon, 1);
-        for h = 1:forecast_horizon
-            forecasts(h) = beta_hat(1) + beta_hat(2)^(h) * (y(end) - beta_hat(1));
-        end
-    
-        forecast_matrix_2(:, i-start_forecast+1) = forecasts;
-    end
-    
-    % Q5
-    forecast_matrix_3 = zeros(12, length(quarters) - start_forecast+1);
-    
-    
-    for i = start_forecast:length(quarters)
-        yt_window = ytrue(1:i-1);
-    
-        forecasts = yt_window(end) * ones(12, 1);  
-    
-        forecast_matrix_3(:, i-start_forecast+1) = forecasts;
-    end
-    
-    % Q6
-    
-    forecast_matrix_4 = zeros(12, length(quarters) - start_forecast);
-    
-    for i = start_forecast:length(quarters)
-    
-        yt_window = ytrue(1:i-1);
-    
-        forecasts = zeros(12, 1);
-        for h = 1:12
-            forecasts(h) = mu(i) + phi^(h) * (yt_window(end) - mu(i));
-        end
-    
-        forecast_matrix_4(:, i-start_forecast+1) = forecasts;
-    end
-    
-    
-    % Q7
-    realization_matrix = NaN(12, length(quarters) - start_forecast+1);
-    
-    for i = start_forecast:length(quarters)
-        realization_horizon = min(length(quarters) - i + 1, 12);
-        realization_matrix(1:realization_horizon, i-start_forecast+1) = ytrue(i:i+realization_horizon-1);
-    end
-
-  % Q8
-    for i = 1:4
-        if i == 1
-            forecasts = forecast_matrix_1;
-        elseif i == 2
-            forecasts = forecast_matrix_2;
-        elseif i == 3
-            forecasts = forecast_matrix_3;
-        else
-            forecasts = forecast_matrix_4;
-        end
-
-        for h = 1:12
-            true_y = realization_matrix(h, :);
-            common_period = ~isnan(true_y) & ~isnan(forecasts(h, :));
-
-            all_rmse(h, i, iter) = sqrt(nanmean((forecasts(h, common_period) - true_y(common_period)).^2));
-            all_mae(h, i, iter) = nanmean(abs(forecasts(h, common_period) - true_y(common_period)));
-        end
-    end
-end
-
-mean_rmse = mean(all_rmse, 3);
-mean_mae = mean(all_mae, 3);
-
-subplot(2, 1, 1);
-plot(1:12, mean_rmse(:, 1:3) ./ mean_rmse(:, 4), 'LineWidth', 1.5);
-%title('Root Mean Square Error (RMSE) - Ratio to Researcher 4');
-legend('Researcher 1 - expanding window', 'Researcher 2 - rolling window', 'Researcher 3 - random walk');
-ylabel('RMSE Ratio');
-xlabel('Forecasting Horizon');
-
-subplot(2, 1, 2);
-plot(1:12, mean_mae(:, 1:3) ./ mean_mae(:, 4), 'LineWidth', 1.5);
-%title('Mean Absolute Error (MAE) - Ratio to Researcher 4');
-legend('Researcher 1 - expanding window', 'Researcher 2 - rolling window', 'Researcher 3 - random walk');
-ylabel('MAE Ratio');
-xlabel('Forecasting Horizon');
-saveas(gcf, '/Users/adrienroussetplanat/Library/CloudStorage/Dropbox/PhD/Courses/S2/Metrics_II/PS/Output/Plot/ps1_fig6', 'epsc');
