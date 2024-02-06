@@ -24,7 +24,7 @@ end
 saveas(gcf, '../Output/Plot/ps2_fig1', 'epsc');
 %% 1.2
 constant=1;
-p=24;
+p=12;
 results=VAR_OLS(dt.data,constant,p); %dt.data
 %% 1.3
 A0 = chol(results.Sigma, 'lower');
@@ -99,7 +99,7 @@ for i = 1:n
 end
 saveas(gcf, '../Output/Plot/ps2_fig3', 'epsc');
 
-u_yearly = retime(timetable(dt.dates(25:end), structural_u), 'yearly', 'mean');
+u_yearly = retime(timetable(dt.dates(p+1:end), structural_u), 'yearly', 'mean');
 
 f = figure;
 clf
